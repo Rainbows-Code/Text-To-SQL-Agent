@@ -1,0 +1,21 @@
+# Environment variables (Contains sensitive API keys)
+.env
+
+# Python bytecode & cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual Environments
+venv/
+env/
+ENV/
+
+# IDE settings
+.vscode/
+.idea/
+
+# OS specific files
+.DS_Store
+Thumbs.db

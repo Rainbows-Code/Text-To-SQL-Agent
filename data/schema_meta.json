@@ -1,0 +1,93 @@
+{
+  "database_name": "ecommerce_analytics",
+  "description": "电商数据分析数据库，涵盖用户画像、商品类目、销售订单及订单明细数据。",
+  "tables": [
+    {
+      "table_name": "categories",
+      "description": "商品类目表，存储商品的分类结构（包含父级分类）",
+      "columns": [
+        {"name": "category_id", "type": "INTEGER", "primary_key": true, "description": "类目唯一ID"},
+        {"name": "category_name", "type": "VARCHAR(50)", "primary_key": false, "description": "类目名称（如数码电子、手机通讯、潮流男装等）"},
+        {"name": "parent_id", "type": "INTEGER", "primary_key": false, "description": "父类目ID，为 NULL 表示顶级分类"}
+      ],
+      "foreign_keys": [
+        {"column": "parent_id", "referenced_table": "categories", "referenced_column": "category_id"}
+      ]
+    },
+    {
+      "table_name": "products",
+      "description": "商品信息表，存储商品售价、成本、库存及类目归属",
+      "columns": [
+        {"name": "product_id", "type": "INTEGER", "primary_key": true, "description": "商品唯一ID"},
+        {"name": "product_name", "type": "VARCHAR(100)", "primary_key": false, "description": "商品全称或型号"},
+        {"name": "category_id", "type": "INTEGER", "primary_key": false, "description": "所属类目ID"},
+        {"name": "price", "type": "DECIMAL(10, 2)", "primary_key": false, "description": "商品对外零售价（单价）"},
+        {"name": "cost", "type": "DECIMAL(10, 2)", "primary_key": false, "description": "商品进货成本价"},
+        {"name": "stock_quantity", "type": "INTEGER", "primary_key": false, "description": "当前库存数量"},
+        {"name": "created_at", "type": "DATETIME", "primary_key": false, "description": "商品上架时间"}
+      ],
+      "foreign_keys": [
+        {"column": "category_id", "referenced_table": "categories", "referenced_column": "category_id"}
+      ]
+    },
+    {
+      "table_name": "users",
+      "description": "用户信息表，存储基础用户属性（性别、年龄、所在城市、注册时间）",
+      "columns": [
+        {"name": "user_id", "type": "INTEGER", "primary_key": true, "description": "用户唯一ID"},
+        {"name": "user_name", "type": "VARCHAR(50)", "primary_key": false, "description": "用户姓名或昵称"},
+        {"name": "gender", "type": "VARCHAR(10)", "primary_key": false, "description": "性别：'男' 或 '女'"},
+        {"name": "age", "type": "INTEGER", "primary_key": false, "description": "年龄（岁）"},
+        {"name": "city", "type": "VARCHAR(50)", "primary_key": false, "description": "用户常住城市（如北京、上海、深圳、广州、杭州等）"},
+        {"name": "registered_at", "type": "DATETIME", "primary_key": false, "description": "账号注册时间"}
+      ],
+      "foreign_keys": []
+    },
+    {
+      "table_name": "orders",
+      "description": "订单主表，存储交易总额、支付状态及下单时间",
+      "columns": [
+        {"name": "order_id", "type": "INTEGER", "primary_key": true, "description": "订单唯一编号"},
+        {"name": "user_id", "type": "INTEGER", "primary_key": false, "description": "下单用户ID"},
+        {"name": "total_amount", "type": "DECIMAL(10, 2)", "primary_key": false, "description": "订单总支付金额"},
+        {"name": "pay_status", "type": "VARCHAR(20)", "primary_key": false, "description": "支付状态：'PAID' (已支付), 'PENDING' (待支付), 'CANCELLED' (已取消), 'REFUNDED' (已退款)"},
+        {"name": "created_at", "type": "DATETIME", "primary_key": false, "description": "下单时间"}
+      ],
+      "foreign_keys": [
+        {"column": "user_id", "referenced_table": "users", "referenced_column": "user_id"}
+      ]
+    },
+    {
+      "table_name": "order_items",
+      "description": "订单明细表，存储每个订单包含的具体商品、购买数量和成交单价",
+      "columns": [
+        {"name": "item_id", "type": "INTEGER", "primary_key": true, "description": "明细项唯一ID"},
+        {"name": "order_id", "type": "INTEGER", "primary_key": false, "description": "关联订单ID"},
+        {"name": "product_id", "type": "INTEGER", "primary_key": false, "description": "关联商品ID"},
+        {"name": "quantity", "type": "INTEGER", "primary_key": false, "description": "购买数量"},
+        {"name": "price", "type": "DECIMAL(10, 2)", "primary_key": false, "description": "购买时成交单价"}
+      ],
+      "foreign_keys": [
+        {"column": "order_id", "referenced_table": "orders", "referenced_column": "order_id"},
+        {"column": "product_id", "referenced_table": "products", "referenced_column": "product_id"}
+      ]
+    }
+  ],
+  "metrics": [
+    {
+      "metric_name": "GMV / 销售额",
+      "definition": "已支付订单的总金额（pay_status = 'PAID'）",
+      "calculation_rule": "SUM(total_amount) FROM orders WHERE pay_status = 'PAID'"
+    },
+    {
+      "metric_name": "客单价 / 平均订单金额",
+      "definition": "已支付订单的平均成单金额",
+      "calculation_rule": "AVG(total_amount) FROM orders WHERE pay_status = 'PAID'"
+    },
+    {
+      "metric_name": "商品毛利润",
+      "definition": "已支付订单中商品成交价减去成本价的利润总和",
+      "calculation_rule": "SUM((order_items.price - products.cost) * order_items.quantity) FROM order_items JOIN products ON order_items.product_id = products.product_id JOIN orders ON order_items.order_id = orders.order_id WHERE orders.pay_status = 'PAID'"
+    }
+  ]
+}

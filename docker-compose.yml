@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  # 1. FastAPI 后端服务 (Agent 控制层、RAG 检索、AST 安全网、只读执行器)
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: text2sql-backend
+    restart: always
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+    ports:
+      - "8000:8000"
+    environment:
+      - LLM_BASE_URL=${LLM_BASE_URL:-https://api.siliconflow.cn/v1}
+      - LLM_API_KEY=${LLM_API_KEY}
+      - LLM_MODEL=${LLM_MODEL:-THUDM/glm-4-9b-chat}
+      - RAG_TOP_K=${RAG_TOP_K:-3}
+      - MAX_REPAIR_TURNS=${MAX_REPAIR_TURNS:-3}
+      - HF_ENDPOINT=https://hf-mirror.com
+    volumes:
+      - ./data:/app/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # 2. Streamlit 前端 Web 交互界面
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: text2sql-frontend
+    restart: always
+    command: streamlit run frontend/app.py --server.port=8501 --server.address=0.0.0.0
+    ports:
+      - "8501:8501"
+    environment:
+      - BACKEND_URL=http://backend:8000
+      - LLM_BASE_URL=${LLM_BASE_URL:-https://api.siliconflow.cn/v1}
+      - LLM_API_KEY=${LLM_API_KEY}
+      - LLM_MODEL=${LLM_MODEL:-THUDM/glm-4-9b-chat}
+    volumes:
+      - ./data:/app/data
+    depends_on:
+      backend:
+        condition: service_healthy
